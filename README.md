@@ -1,12 +1,27 @@
 # Quick Bate
 
-Realtime video chat, message and file sharing for your attendants to go
+Realtime video chat, message and file sharing for your attendants to go.
 
-docker run -it --name myeasyrtc --rm -p 8443:8443 hthetiot/easyrtc:latest run server_ssl
+## Usage
 
-## References
+* Create docker-compose.yml
 
-https://github.com/jitsi/jitsi-meet
+```yml
+version: "3"
 
-https://github.com/jitsi/jitsi-videobridge
+services:
+  quick-bate:
+    build: .
+    image: flaviostutz/quick-bate
+    ports:
+      - 8080:8080
+```
+
+* Run ```docker-compose up -d```
+
+* Open the customer browser to http://localhost:8080
+  * A number will be shown
+
+* Open the attendant browser to http://localhost:8080/attendant
+  * Type the number on customer browser to connect to him
 
