@@ -56,5 +56,5 @@ var rtc = easyrtc.listen(app, socketServer, null, function(err, rtcRef) {
 
 // Listen on port 8080
 webServer.listen(8080, function () {
-    console.log('Started EasyRTC server for Quick Bate on port :8080');
+    console.log('Started EasyRTC server for Quick Mate on port :8080');
 });

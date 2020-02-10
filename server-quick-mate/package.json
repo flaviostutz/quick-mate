@@ -1,7 +1,7 @@
 {
-  "name": "quick-bate",
+  "name": "quick-mate",
   "version": "1.0.0",
-  "author": "Quick Bate",
+  "author": "Quick Mate",
   "private": true,
   "dependencies": {
     "express": "^4.10.7",
