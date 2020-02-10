@@ -671,6 +671,15 @@ function messageListener(easyrtcid, msgType, content) {
 
 
 function appInit() {
+    console.log("Connect to room 0123...")
+    connectToRoom("0123", {
+        sample: "text"
+    })
+}
+
+function connectToRoom(roomName, roomParameters) {
+
+    easyrtc.hangupAll();
 
     // Prep for the top-down layout manager
     setReshaper('fullpage', reshapeFull);
@@ -684,19 +693,29 @@ function appInit() {
     setReshaper('textEntryButton', reshapeTextEntryButton);
 
     updateMuteImage(false);
+
     window.onresize = handleWindowResize;
     handleWindowResize(); //initial call of the top-down layout manager
 
     easyrtc.enableDebug(true);
 
+    easyrtc.easyApp("quick-mate", "box0", ["box1", "box2", "box3"], loginSuccess);
+
     easyrtc.setRoomOccupantListener(callEverybodyElse);
-    easyrtc.easyApp("easyrtc.multiparty", "box0", ["box1", "box2", "box3"], loginSuccess);
+
+    easyrtc.joinRoom(roomName, roomParameters, function(roomName) {
+        console.log("Joined room " + roomName + " successfully")
+    }, function(errorCode, errorText, roomName) {
+        console.log("Failed to join room " + roomName + ". code=" + errorCode + "; error=" + errorText)
+    })
+
     easyrtc.setPeerListener(messageListener);
+
     easyrtc.setDisconnectListener( function() {
         easyrtc.showError("LOST-CONNECTION", "Lost connection to signaling server");
     });
 
-    easyrtc.setOnCall( function(easyrtcid, slot) {
+    easyrtc.setOnCall(function(easyrtcid, slot) {
         console.log("getConnection count="  + easyrtc.getConnectionCount() );
         boxUsed[slot+1] = true;
         if(activeBox == 0 ) { // first connection
