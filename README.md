@@ -1,4 +1,4 @@
-# Quick Bate
+# Quick Mate
 
 Realtime video chat, message and file sharing for your attendants to go.
 
@@ -12,7 +12,7 @@ version: "3"
 services:
   quick-bate:
     build: .
-    image: flaviostutz/quick-bate
+    image: flaviostutz/quick-mate
     ports:
       - 8080:8080
 ```

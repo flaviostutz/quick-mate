@@ -1,10 +1,10 @@
 version: "3"
 
 services:
-  quick-bate:
+  quick-mate:
     build: .
-    image: flaviostutz/quick-bate
+    image: flaviostutz/quick-mate
     ports:
       - 8080:8080
     # volumes:
-    #   - /Users/flaviostutz/Documents/development/flaviostutz/quick-bate/server-quick-bate:/app/easyrtc/server-quick-bate
+    #   - /Users/flaviostutz/Documents/development/flaviostutz/quick-mate/server-quick-mate:/app/easyrtc/server-quick-mate
