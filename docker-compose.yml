@@ -6,3 +6,5 @@ services:
     image: flaviostutz/quick-bate
     ports:
       - 8080:8080
+    # volumes:
+    #   - /Users/flaviostutz/Documents/development/flaviostutz/quick-bate/server-quick-bate:/app/easyrtc/server-quick-bate
