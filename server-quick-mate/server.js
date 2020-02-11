@@ -17,6 +17,9 @@ app.get('/room/*',function(req,res) {
 app.get('/room',function(req,res) {
     res.sendFile('/static/room.html', { root : __dirname});
 });
+app.get('/join',function(req,res) {
+    res.sendFile('/static/join.html', { root : __dirname});
+});
 app.use(serveStatic('static', {'index': ['index.html']}));
 
 // Start Express http server on port 8080
@@ -26,8 +29,6 @@ var webServer = http.createServer(app);
 var socketServer = socketIo.listen(webServer, {"log level":1});
 
 easyrtc.setOption("logLevel", "debug");
-// easyrtc.setOption("appAutoCreateEnable", false);
-// easyrtc.setOption("appDefaultName", "quick-bate");
 easyrtc.setOption("roomDefaultEnable", false);
 
 // Overriding the default easyrtcAuth listener, only so we can directly access its callback
@@ -37,11 +38,8 @@ easyrtc.events.on("easyrtcAuth", function(socket, easyrtcid, msg, socketCallback
             callback(err, connectionObj);
             return;
         }
-
         connectionObj.setField("credential", msg.msgData.credential, {"isShared":false});
-
         console.log("["+easyrtcid+"] Credential saved!", connectionObj.getFieldValueSync("credential"));
-
         callback(err, connectionObj);
     });
 });
@@ -56,13 +54,10 @@ easyrtc.events.on("roomJoin", function(connectionObj, roomName, roomParameter, c
 // Start EasyRTC server
 var rtc = easyrtc.listen(app, socketServer, null, function(err, rtcRef) {
     console.log("Initiated");
-
     rtcRef.events.on("roomCreate", function(appObj, creatorConnectionObj, roomName, roomOptions, callback) {
         console.log("roomCreate fired! Trying to create: " + roomName);
-
         appObj.events.defaultListeners.roomCreate(appObj, creatorConnectionObj, roomName, roomOptions, callback);
     });
-
     rtcRef.createApp(
         "quick-bate"
     );    

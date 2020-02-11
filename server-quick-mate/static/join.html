@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Join Conference</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <script>
+            function gotoRoom() {
+                roomCode = document.getElementById("roomCode").value
+                roomCode = roomCode.toUpperCase()
+                window.location.href = "/room/" + roomCode
+            }
+        </script>
+    </head>
+
+    <body>
+        <label for="roomCode">Room code:</label>
+        <input type="text" id="roomCode"></input><br>
+        <button type="button" onclick="gotoRoom()">Goto conference!</button>
+    </body>
+</html>

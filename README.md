@@ -19,9 +19,11 @@ services:
 
 * Run ```docker-compose up -d```
 
-* Open the customer browser to http://localhost:8080
-  * A number will be shown
+* Open one browser at http://localhost:8080
+  * Type your name and click "Start Conference!"
+  * A "Room Code" will be displayed. Copy it.
 
-* Open the attendant browser to http://localhost:8080/attendant
-  * Type the number on customer browser to connect to him
-
+* Open another browser at http://localhost:8080/join
+  * Type your name and paste "Room Code"
+  * Click "Join Conference!"
+  * Here we go!

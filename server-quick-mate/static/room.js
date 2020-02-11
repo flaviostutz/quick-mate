@@ -549,7 +549,6 @@ function callEverybodyElse(roomName, otherPeople) {
                 establishConnection(position-1);
             }
         }
-        console.log(">>>>> CALLING " + list[position])
         easyrtc.call(list[position], callSuccess, callFailure);
 
     }
@@ -670,14 +669,52 @@ function messageListener(easyrtcid, msgType, content) {
 }
 
 
-function appInit() {
-    console.log("Connect to room 0123...")
-    connectToRoom("0123", {
-        sample: "text"
-    })
+function init() {
+    roomCode = getRoomCodeFromURL()
+
+    if(roomCode != null) {
+        document.getElementById("joinRoom").style.display = "block"
+        document.getElementById("roomCode3").innerText = roomCode
+
+    } else {
+        document.getElementById("newRoom").style.display = "block"
+    }
+
+    username = getUsernameFromLocalStorage()
+    if(username != null) {
+        document.getElementById("username1").value = username
+        document.getElementById("username2").value = username
+    }
 }
 
-function connectToRoom(roomName, roomParameters) {
+function createRoom() {
+    username = document.getElementById("username1").value
+    roomCode = makeid(3, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    roomCode += makeid(4, '0123456789')
+    
+    connectToRoom(roomCode, {
+        sample: "created"
+    }, username)
+
+    document.getElementById("newRoom").style.display = "none"
+    document.getElementById("newRoom2").style.display = "block"
+    document.getElementById("roomCode2").innerText = roomCode
+}
+
+function joinRoom() {
+    username = document.getElementById("username2").value
+    roomCode = getRoomCodeFromURL()
+    
+    connectToRoom(roomCode, {
+        sample: "joined"
+    }, username)
+
+    document.getElementById("joinRoom").style.display = "none"
+}
+
+function connectToRoom(roomName, roomParameters, username) {
+    console.log("Connecting to room " + roomCode + " (" + username + ")...")
+    setUsernameToLocalStorage(username)
 
     easyrtc.hangupAll();
 
@@ -697,7 +734,12 @@ function connectToRoom(roomName, roomParameters) {
     window.onresize = handleWindowResize;
     handleWindowResize(); //initial call of the top-down layout manager
 
-    easyrtc.enableDebug(true);
+    easyrtc.enableDebug(false);
+
+    ok = easyrtc.setUsername(username)
+    if(!ok) {
+        console.log("Username '" + username + "' invalid")
+    }
 
     easyrtc.easyApp("quick-mate", "box0", ["box1", "box2", "box3"], loginSuccess);
 
@@ -724,6 +766,7 @@ function connectToRoom(roomName, roomParameters) {
         }
         document.getElementById(getIdOfBox(slot+1)).style.visibility = "visible";
         handleWindowResize();
+        document.getElementById("newRoom2").style.display = "none"
     });
 
 
@@ -744,3 +787,31 @@ function connectToRoom(roomName, roomParameters) {
         },20);
     });
 }
+
+
+function makeid(length, characters) {
+    var result           = '';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+       result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+ }
+
+ function getRoomCodeFromURL() {
+    var href = window.location.href
+    h = href.split("/")
+    if(h.length==5) {
+        return h[4]
+    } else {
+        return null
+    }
+}
+
+function getUsernameFromLocalStorage() {
+    return window.localStorage.getItem("quick-bate::username");
+}
+function setUsernameToLocalStorage(username) {
+    return window.localStorage.setItem("quick-bate::username", username);
+}
+
