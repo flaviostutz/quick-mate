@@ -7,4 +7,4 @@ services:
     ports:
       - 8080:8080
     # volumes:
-    #   - /Users/flaviostutz/Documents/development/flaviostutz/quick-mate/server-quick-mate:/app/easyrtc/server-quick-mate
+    #   - /Users/flaviostutz/Documents/development/flaviostutz/quick-mate/server-quick-mate/static:/app/easyrtc/server-quick-mate/static
