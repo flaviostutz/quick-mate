@@ -31,6 +31,28 @@ var socketServer = socketIo.listen(webServer, {"log level":1});
 easyrtc.setOption("logLevel", "debug");
 easyrtc.setOption("roomDefaultEnable", false);
 
+//ICE configuration
+var appIceServers = []
+if(process.env.STUN_HOST_PORT != "") {
+    appIceServers.push({"url":"stun:" + process.env.STUN_HOST_PORT})
+}
+if(process.env.TURN_HOST_PORT != "") {
+    appIceServers.push({
+        "url":"turn:" + process.env.TURN_HOST_PORT,
+        "username":process.env.TURN_USERNAME!=""?process.env.TURN_USERNAME:null,
+        "credential":process.env.TURN_CREDENTIAL!=""?process.env.TURN_CREDENTIAL:null
+    })
+}
+if(process.env.TURN_TCP_HOST_PORT != "") {
+    appIceServers.push({
+        "url":"turn:" + process.env.TURN_TCP_HOST_PORT + "[?transport=tcp]",
+        "username":process.env.TURN_TCP_USERNAME!=""?process.env.TURN_TCP_USERNAME:null,
+        "credential":process.env.TURN_TCP_CREDENTIAL!=""?process.env.TURN_TCP_CREDENTIAL:null
+    })
+}
+console.log(JSON.stringify(appIceServers))
+easyrtc.setOption("appIceServers", appIceServers);
+
 // Overriding the default easyrtcAuth listener, only so we can directly access its callback
 easyrtc.events.on("easyrtcAuth", function(socket, easyrtcid, msg, socketCallback, callback) {
     easyrtc.events.defaultListeners.easyrtcAuth(socket, easyrtcid, msg, socketCallback, function(err, connectionObj){

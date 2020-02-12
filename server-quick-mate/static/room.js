@@ -5,7 +5,306 @@ var numVideoOBJS = maxCALLERS+1;
 var layout;
 
 
-easyrtc.dontAddCloseButtons(true);
+
+/* ROOM PREPARATION */
+
+function init() {
+    roomCode = getRoomCodeFromURL()
+
+    if(roomCode != null) {
+        document.getElementById("joinRoom").style.display = "block"
+        document.getElementById("roomCode3").innerText = roomCode
+
+    } else {
+        document.getElementById("newRoom").style.display = "block"
+    }
+
+    username = getUsernameFromLocalStorage()
+    if(username != null) {
+        document.getElementById("username1").value = username
+        document.getElementById("username2").value = username
+    }
+}
+
+function createRoom() {
+    username = document.getElementById("username1").value
+    roomCode = makeid(3, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    roomCode += makeid(4, '0123456789')
+    
+    connectToRoom(roomCode, {
+        sample: "created"
+    }, username)
+
+    document.getElementById("newRoom").style.display = "none"
+    document.getElementById("newRoom2").style.display = "block"
+    document.getElementById("roomCode2").innerText = roomCode
+}
+
+function joinRoom() {
+    username = document.getElementById("username2").value
+    roomCode = getRoomCodeFromURL()
+    
+    connectToRoom(roomCode, {
+        sample: "joined"
+    }, username)
+
+    document.getElementById("joinRoom").style.display = "none"
+}
+
+function connectToRoom(roomName, roomParameters, username) {
+    console.log("Connecting to room " + roomCode + " (" + username + ")...")
+    setUsernameToLocalStorage(username)
+
+    easyrtc.hangupAll();
+    easyrtc.dontAddCloseButtons(true);
+
+    // Prep for the top-down layout manager
+    setReshaper('fullpage', reshapeFull);
+    for(var i = 0; i < numVideoOBJS; i++) {
+        prepVideoBox(i);
+    }
+    setReshaper('killButton', killButtonReshaper);
+    setReshaper('muteButton', muteButtonReshaper);
+    setReshaper('textentryBox', reshapeTextEntryBox);
+    setReshaper('textentryField', reshapeTextEntryField);
+    setReshaper('textEntryButton', reshapeTextEntryButton);
+
+    updateMuteImage(false);
+
+    window.onresize = handleWindowResize;
+    handleWindowResize(); //initial call of the top-down layout manager
+
+    easyrtc.enableDebug(false);
+
+    ok = easyrtc.setUsername(username)
+    if(!ok) {
+        console.log("Username '" + username + "' invalid")
+    }
+
+    easyrtc.easyApp("quick-mate", "box0", ["box1", "box2", "box3"], loginSuccess);
+
+    easyrtc.setRoomOccupantListener(callEverybodyElse);
+
+    easyrtc.joinRoom(roomName, roomParameters, function(roomName) {
+        console.log("Joined room " + roomName + " successfully")
+    }, function(errorCode, errorText, roomName) {
+        console.log("Failed to join room " + roomName + ". code=" + errorCode + "; error=" + errorText)
+    })
+
+    easyrtc.setPeerListener(messageListener);
+
+    easyrtc.setDisconnectListener( function() {
+        easyrtc.showError("LOST-CONNECTION", "Lost connection to signaling server");
+    });
+
+    easyrtc.setOnCall(function(easyrtcid, slot) {
+        console.log("getConnection count="  + easyrtc.getConnectionCount() );
+        boxUsed[slot+1] = true;
+        if(activeBox == 0 ) { // first connection
+            collapseToThumb();
+            document.getElementById('textEntryButton').style.display = 'block';
+        }
+        document.getElementById(getIdOfBox(slot+1)).style.visibility = "visible";
+        handleWindowResize();
+        document.getElementById("newRoom2").style.display = "none"
+    });
+
+
+    easyrtc.setOnHangup(function(easyrtcid, slot) {
+        boxUsed[slot+1] = false;
+        if(activeBox > 0 && slot+1 == activeBox) {
+            collapseToThumb();
+        }
+        setTimeout(function() {
+            document.getElementById(getIdOfBox(slot+1)).style.visibility = "hidden";
+
+            if( easyrtc.getConnectionCount() == 0 ) { // no more connections
+                expandThumb(0);
+                document.getElementById('textEntryButton').style.display = 'none';
+                document.getElementById('textentryBox').style.display = 'none';
+            }
+            handleWindowResize();
+        },20);
+    });
+}
+
+function callEverybodyElse(roomName, otherPeople) {
+    console.log("callEverybodyElse() roomName=" + roomName + "; ortherPeople=" + otherPeople)
+    easyrtc.setRoomOccupantListener(null); // so we're only called once.
+
+    var list = [];
+    var connectCount = 0;
+    for(var easyrtcid in otherPeople ) {
+        list.push(easyrtcid);
+    }
+    //
+    // Connect in reverse order. Latter arriving people are more likely to have
+    // empty slots.
+    //
+    function establishConnection(position) {
+        function callSuccess() {
+            connectCount++;
+            if( connectCount < maxCALLERS && position > 0) {
+                establishConnection(position-1);
+            }
+        }
+        function callFailure(errorCode, errorText) {
+            easyrtc.showError(errorCode, errorText);
+            if( connectCount < maxCALLERS && position > 0) {
+                establishConnection(position-1);
+            }
+        }
+        easyrtc.call(list[position], callSuccess, callFailure);
+
+    }
+    if( list.length > 0) {
+        establishConnection(list.length-1);
+    }
+}
+
+
+function makeid(length, characters) {
+    var result           = '';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+       result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+ }
+
+ function getRoomCodeFromURL() {
+    var href = window.location.href
+    h = href.split("/")
+    if(h.length==5) {
+        return h[4]
+    } else {
+        return null
+    }
+}
+
+function getUsernameFromLocalStorage() {
+    return window.localStorage.getItem("quick-bate::username");
+}
+function setUsernameToLocalStorage(username) {
+    return window.localStorage.setItem("quick-bate::username", username);
+}
+
+
+
+
+/* ROOM ACTIONS */
+
+function loginSuccess() {
+    expandThumb(0);  // expand the mirror image initially.
+}
+
+function cancelText() {
+    document.getElementById('textentryBox').style.display = "none";
+    document.getElementById('textEntryButton').style.display = "block";
+}
+
+function sendText(e) {
+    document.getElementById('textentryBox').style.display = "none";
+    document.getElementById('textEntryButton').style.display = "block";
+    var stringToSend = document.getElementById('textentryField').value;
+    if( stringToSend && stringToSend != "") {
+        for(var i = 0; i < maxCALLERS; i++ ) {
+            var easyrtcid = easyrtc.getIthCaller(i);
+            if( easyrtcid && easyrtcid != "") {
+                easyrtc.sendPeerMessage(easyrtcid, "im",  stringToSend);
+            }
+        }
+    }
+    return false;
+}
+
+function showTextEntry() {
+    document.getElementById('textentryField').value = "";
+    document.getElementById('textentryBox').style.display = "block";
+    document.getElementById('textEntryButton').style.display = "none";
+    document.getElementById('textentryField').focus();
+}
+
+function showMessage(startX, startY, content) {
+    var fullPage = document.getElementById('fullpage');
+    var fullW = parseInt(fullPage.offsetWidth);
+    var fullH = parseInt(fullPage.offsetHeight);
+    var centerEndX = 0.2*startX + 0.8*fullW/2;
+    var centerEndY = 0.2*startY + 0.8*fullH/2;
+
+
+    var cloudObject = document.createElement("img");
+    cloudObject.src = "images/cloud.png";
+    cloudObject.style.width = "1px";
+    cloudObject.style.height = "1px";
+    cloudObject.style.left = startX + "px";
+    cloudObject.style.top = startY + "px";
+    fullPage.appendChild(cloudObject);
+
+    cloudObject.onload = function() {
+        cloudObject.style.left = startX + "px";
+        cloudObject.style.top = startY + "px";
+        cloudObject.style.width = "4px";
+        cloudObject.style.height = "4px";
+        cloudObject.style.opacity = 0.7;
+        cloudObject.style.zIndex = 5;
+        cloudObject.className = "transit boxCommon";
+        var textObject;
+        function removeCloud() {
+            if( textObject) {
+                fullPage.removeChild(textObject);
+                fullPage.removeChild(cloudObject);
+            }
+        }
+        setTimeout(function() {
+            cloudObject.style.left = centerEndX - fullW/4 + "px";
+            cloudObject.style.top = centerEndY - fullH/4+ "px";
+            cloudObject.style.width = (fullW/2) + "px";
+            cloudObject.style.height = (fullH/2) + "px";
+        }, 10);
+        setTimeout(function() {
+            textObject = document.createElement('div');
+            textObject.className = "boxCommon";
+            textObject.style.left = Math.floor(centerEndX-fullW/8) + "px";
+            textObject.style.top = Math.floor(centerEndY) + "px";
+            textObject.style.fontSize = "36pt";
+            textObject.style.width = (fullW*0.4) + "px";
+            textObject.style.height = (fullH*0.4) + "px";
+            textObject.style.zIndex = 6;
+            textObject.appendChild( document.createTextNode(content));
+            fullPage.appendChild(textObject);
+            textObject.onclick = removeCloud;
+            cloudObject.onclick = removeCloud;
+        }, 1000);
+        setTimeout(function() {
+            cloudObject.style.left = startX + "px";
+            cloudObject.style.top = startY + "px";
+            cloudObject.style.width = "4px";
+            cloudObject.style.height = "4px";
+            fullPage.removeChild(textObject);
+        }, 9000);
+        setTimeout(function(){
+            fullPage.removeChild(cloudObject);
+        }, 10000);
+    }
+}
+
+function messageListener(easyrtcid, msgType, content) {
+    for(var i = 0; i < maxCALLERS; i++) {
+        if( easyrtc.getIthCaller(i) == easyrtcid) {
+            var startArea = document.getElementById(getIdOfBox(i+1));
+            var startX = parseInt(startArea.offsetLeft) + parseInt(startArea.offsetWidth)/2;
+            var startY = parseInt(startArea.offsetTop) + parseInt(startArea.offsetHeight)/2;
+            showMessage(startX, startY, content);
+        }
+    }
+}
+
+
+
+
+
+/* LAYOUT MANAGEMENT */
 
 function getIdOfBox(boxNum) {
     return "box" + boxNum;
@@ -518,300 +817,5 @@ function killActiveBox() {
 
 function muteActiveBox() {
     updateMuteImage(true);
-}
-
-
-
-
-function callEverybodyElse(roomName, otherPeople) {
-    console.log("callEverybodyElse() roomName=" + roomName + "; ortherPeople=" + otherPeople)
-    easyrtc.setRoomOccupantListener(null); // so we're only called once.
-
-    var list = [];
-    var connectCount = 0;
-    for(var easyrtcid in otherPeople ) {
-        list.push(easyrtcid);
-    }
-    //
-    // Connect in reverse order. Latter arriving people are more likely to have
-    // empty slots.
-    //
-    function establishConnection(position) {
-        function callSuccess() {
-            connectCount++;
-            if( connectCount < maxCALLERS && position > 0) {
-                establishConnection(position-1);
-            }
-        }
-        function callFailure(errorCode, errorText) {
-            easyrtc.showError(errorCode, errorText);
-            if( connectCount < maxCALLERS && position > 0) {
-                establishConnection(position-1);
-            }
-        }
-        easyrtc.call(list[position], callSuccess, callFailure);
-
-    }
-    if( list.length > 0) {
-        establishConnection(list.length-1);
-    }
-}
-
-
-function loginSuccess() {
-    expandThumb(0);  // expand the mirror image initially.
-}
-
-
-function cancelText() {
-    document.getElementById('textentryBox').style.display = "none";
-    document.getElementById('textEntryButton').style.display = "block";
-}
-
-
-function sendText(e) {
-    document.getElementById('textentryBox').style.display = "none";
-    document.getElementById('textEntryButton').style.display = "block";
-    var stringToSend = document.getElementById('textentryField').value;
-    if( stringToSend && stringToSend != "") {
-        for(var i = 0; i < maxCALLERS; i++ ) {
-            var easyrtcid = easyrtc.getIthCaller(i);
-            if( easyrtcid && easyrtcid != "") {
-                easyrtc.sendPeerMessage(easyrtcid, "im",  stringToSend);
-            }
-        }
-    }
-    return false;
-}
-
-
-function showTextEntry() {
-    document.getElementById('textentryField').value = "";
-    document.getElementById('textentryBox').style.display = "block";
-    document.getElementById('textEntryButton').style.display = "none";
-    document.getElementById('textentryField').focus();
-}
-
-
-function showMessage(startX, startY, content) {
-    var fullPage = document.getElementById('fullpage');
-    var fullW = parseInt(fullPage.offsetWidth);
-    var fullH = parseInt(fullPage.offsetHeight);
-    var centerEndX = 0.2*startX + 0.8*fullW/2;
-    var centerEndY = 0.2*startY + 0.8*fullH/2;
-
-
-    var cloudObject = document.createElement("img");
-    cloudObject.src = "images/cloud.png";
-    cloudObject.style.width = "1px";
-    cloudObject.style.height = "1px";
-    cloudObject.style.left = startX + "px";
-    cloudObject.style.top = startY + "px";
-    fullPage.appendChild(cloudObject);
-
-    cloudObject.onload = function() {
-        cloudObject.style.left = startX + "px";
-        cloudObject.style.top = startY + "px";
-        cloudObject.style.width = "4px";
-        cloudObject.style.height = "4px";
-        cloudObject.style.opacity = 0.7;
-        cloudObject.style.zIndex = 5;
-        cloudObject.className = "transit boxCommon";
-        var textObject;
-        function removeCloud() {
-            if( textObject) {
-                fullPage.removeChild(textObject);
-                fullPage.removeChild(cloudObject);
-            }
-        }
-        setTimeout(function() {
-            cloudObject.style.left = centerEndX - fullW/4 + "px";
-            cloudObject.style.top = centerEndY - fullH/4+ "px";
-            cloudObject.style.width = (fullW/2) + "px";
-            cloudObject.style.height = (fullH/2) + "px";
-        }, 10);
-        setTimeout(function() {
-            textObject = document.createElement('div');
-            textObject.className = "boxCommon";
-            textObject.style.left = Math.floor(centerEndX-fullW/8) + "px";
-            textObject.style.top = Math.floor(centerEndY) + "px";
-            textObject.style.fontSize = "36pt";
-            textObject.style.width = (fullW*0.4) + "px";
-            textObject.style.height = (fullH*0.4) + "px";
-            textObject.style.zIndex = 6;
-            textObject.appendChild( document.createTextNode(content));
-            fullPage.appendChild(textObject);
-            textObject.onclick = removeCloud;
-            cloudObject.onclick = removeCloud;
-        }, 1000);
-        setTimeout(function() {
-            cloudObject.style.left = startX + "px";
-            cloudObject.style.top = startY + "px";
-            cloudObject.style.width = "4px";
-            cloudObject.style.height = "4px";
-            fullPage.removeChild(textObject);
-        }, 9000);
-        setTimeout(function(){
-            fullPage.removeChild(cloudObject);
-        }, 10000);
-    }
-}
-
-function messageListener(easyrtcid, msgType, content) {
-    for(var i = 0; i < maxCALLERS; i++) {
-        if( easyrtc.getIthCaller(i) == easyrtcid) {
-            var startArea = document.getElementById(getIdOfBox(i+1));
-            var startX = parseInt(startArea.offsetLeft) + parseInt(startArea.offsetWidth)/2;
-            var startY = parseInt(startArea.offsetTop) + parseInt(startArea.offsetHeight)/2;
-            showMessage(startX, startY, content);
-        }
-    }
-}
-
-
-function init() {
-    roomCode = getRoomCodeFromURL()
-
-    if(roomCode != null) {
-        document.getElementById("joinRoom").style.display = "block"
-        document.getElementById("roomCode3").innerText = roomCode
-
-    } else {
-        document.getElementById("newRoom").style.display = "block"
-    }
-
-    username = getUsernameFromLocalStorage()
-    if(username != null) {
-        document.getElementById("username1").value = username
-        document.getElementById("username2").value = username
-    }
-}
-
-function createRoom() {
-    username = document.getElementById("username1").value
-    roomCode = makeid(3, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-    roomCode += makeid(4, '0123456789')
-    
-    connectToRoom(roomCode, {
-        sample: "created"
-    }, username)
-
-    document.getElementById("newRoom").style.display = "none"
-    document.getElementById("newRoom2").style.display = "block"
-    document.getElementById("roomCode2").innerText = roomCode
-}
-
-function joinRoom() {
-    username = document.getElementById("username2").value
-    roomCode = getRoomCodeFromURL()
-    
-    connectToRoom(roomCode, {
-        sample: "joined"
-    }, username)
-
-    document.getElementById("joinRoom").style.display = "none"
-}
-
-function connectToRoom(roomName, roomParameters, username) {
-    console.log("Connecting to room " + roomCode + " (" + username + ")...")
-    setUsernameToLocalStorage(username)
-
-    easyrtc.hangupAll();
-
-    // Prep for the top-down layout manager
-    setReshaper('fullpage', reshapeFull);
-    for(var i = 0; i < numVideoOBJS; i++) {
-        prepVideoBox(i);
-    }
-    setReshaper('killButton', killButtonReshaper);
-    setReshaper('muteButton', muteButtonReshaper);
-    setReshaper('textentryBox', reshapeTextEntryBox);
-    setReshaper('textentryField', reshapeTextEntryField);
-    setReshaper('textEntryButton', reshapeTextEntryButton);
-
-    updateMuteImage(false);
-
-    window.onresize = handleWindowResize;
-    handleWindowResize(); //initial call of the top-down layout manager
-
-    easyrtc.enableDebug(false);
-
-    ok = easyrtc.setUsername(username)
-    if(!ok) {
-        console.log("Username '" + username + "' invalid")
-    }
-
-    easyrtc.easyApp("quick-mate", "box0", ["box1", "box2", "box3"], loginSuccess);
-
-    easyrtc.setRoomOccupantListener(callEverybodyElse);
-
-    easyrtc.joinRoom(roomName, roomParameters, function(roomName) {
-        console.log("Joined room " + roomName + " successfully")
-    }, function(errorCode, errorText, roomName) {
-        console.log("Failed to join room " + roomName + ". code=" + errorCode + "; error=" + errorText)
-    })
-
-    easyrtc.setPeerListener(messageListener);
-
-    easyrtc.setDisconnectListener( function() {
-        easyrtc.showError("LOST-CONNECTION", "Lost connection to signaling server");
-    });
-
-    easyrtc.setOnCall(function(easyrtcid, slot) {
-        console.log("getConnection count="  + easyrtc.getConnectionCount() );
-        boxUsed[slot+1] = true;
-        if(activeBox == 0 ) { // first connection
-            collapseToThumb();
-            document.getElementById('textEntryButton').style.display = 'block';
-        }
-        document.getElementById(getIdOfBox(slot+1)).style.visibility = "visible";
-        handleWindowResize();
-        document.getElementById("newRoom2").style.display = "none"
-    });
-
-
-    easyrtc.setOnHangup(function(easyrtcid, slot) {
-        boxUsed[slot+1] = false;
-        if(activeBox > 0 && slot+1 == activeBox) {
-            collapseToThumb();
-        }
-        setTimeout(function() {
-            document.getElementById(getIdOfBox(slot+1)).style.visibility = "hidden";
-
-            if( easyrtc.getConnectionCount() == 0 ) { // no more connections
-                expandThumb(0);
-                document.getElementById('textEntryButton').style.display = 'none';
-                document.getElementById('textentryBox').style.display = 'none';
-            }
-            handleWindowResize();
-        },20);
-    });
-}
-
-
-function makeid(length, characters) {
-    var result           = '';
-    var charactersLength = characters.length;
-    for ( var i = 0; i < length; i++ ) {
-       result += characters.charAt(Math.floor(Math.random() * charactersLength));
-    }
-    return result;
- }
-
- function getRoomCodeFromURL() {
-    var href = window.location.href
-    h = href.split("/")
-    if(h.length==5) {
-        return h[4]
-    } else {
-        return null
-    }
-}
-
-function getUsernameFromLocalStorage() {
-    return window.localStorage.getItem("quick-bate::username");
-}
-function setUsernameToLocalStorage(username) {
-    return window.localStorage.setItem("quick-bate::username", username);
 }
 

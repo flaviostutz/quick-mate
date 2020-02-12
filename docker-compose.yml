@@ -9,7 +9,7 @@ services:
       - 8443:443
     environment:
       - PROXY_PASS_URL=http://quick-mate:8080/
-      - SSL_DOMAIN=192.168.20.12
+      - SSL_DOMAIN=localhost
       # - REQUEST_LOG_LEVEL=body
 
   quick-mate:
@@ -17,6 +17,18 @@ services:
     image: flaviostutz/quick-mate
     ports:
       - 8484:8080
+    environment:
+      - STUN_HOST_PORT=localhost:3478
+      - TURN_HOST_PORT=localhost:3478
+      - TURN_CREDENTIAL=very_secret
     # volumes:
     #   - /Users/flaviostutz/Documents/development/flaviostutz/quick-mate/server-quick-mate/static:/app/easyrtc/server-quick-mate/static
+
+  mongooseice:
+    image: mongooseim/mongooseice:0.4.2
+    ports:
+      - 3478:3478
+    environment:
+      - MONGOOSEICE_UDP_RELAY_IP=192.168.20.12
+      - MONGOOSEICE_STUN_SECRET=very_secret
 
