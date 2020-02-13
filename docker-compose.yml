@@ -17,16 +17,5 @@ services:
     image: flaviostutz/quick-mate
     ports:
       - 8484:8080
-    environment:
-      - STUN_HOST_PORT=localhost:3478
-      - TURN_HOST_PORT=localhost:3478
-      - TURN_CREDENTIAL=test
     # volumes:
     #   - /Users/flaviostutz/Documents/development/flaviostutz/quick-mate/server-quick-mate/static:/app/easyrtc/server-quick-mate/static
-
-    coturn:
-      image: flaviostutz/coturn:4.5.0.1
-      network_mode: host
-      environment:
-        - TURN_SECRET=test
-
