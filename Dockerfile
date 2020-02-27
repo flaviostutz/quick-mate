@@ -1,4 +1,4 @@
-FROM flaviostutz/easyrtc:1.1.1.0
+FROM flaviostutz/easyrtc:2.0.5.0
 
 EXPOSE 8080
 
